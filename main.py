@@ -1,81 +1,145 @@
 import pygame as pg
 import sys
 
+pg.init()
+window = pg.display.set_mode((1000, 1000))
+
 class board:
-  # initial board config
   def __init__(self):
-    self.moves = []
-    self.selectedSquare = -1
+    self.size = 1000
 
-    self.wRooks = [0, 0, 0, 0, 0, 0, 0, 0, 
-                   0, 0, 0, 0, 0, 0, 0, 0,
-                   0, 0, 0, 0, 0, 0, 0, 0,
-                   0, 0, 0, 0, 1, 0, 0, 0,
-                   0, 0, 0, 0, 0, 0, 0, 0,
-                   0, 0, 0, 0, 0, 0, 0, 0,
-                   0, 0, 0, 0, 0, 0, 0, 0,
-                   1, 0, 0, 0, 0, 0, 0, 1]
+    self.wRooks = int("00000000"
+                      "00000000"
+                      "00000000"
+                      "00000000"
+                      "00000000"
+                      "00000000"
+                      "00000000"
+                      "10000001", 2)
 
-    self.wKnights = [0, 0, 0, 0, 0, 0, 0, 0, 
-                     0, 0, 0, 0, 0, 0, 0, 0,
-                     0, 0, 0, 0, 0, 0, 0, 0,
-                     0, 0, 0, 0, 0, 0, 0, 0,
-                     0, 0, 0, 0, 0, 0, 0, 0,
-                     0, 0, 0, 0, 0, 0, 0, 0,
-                     0, 0, 0, 0, 0, 0, 0, 0,
-                     0, 1, 0, 0, 0, 0, 1, 0]
+    self.bRooks = int("10000001"
+                      "00000000"
+                      "00000000"
+                      "00000000"
+                      "00000000"
+                      "00000000"
+                      "00000000"
+                      "00000000", 2)
 
-    self.wBishops = [0, 0, 0, 0, 0, 0, 0, 0, 
-                     0, 0, 0, 0, 0, 0, 0, 0,
-                     0, 0, 0, 0, 0, 0, 0, 0,
-                     0, 0, 0, 0, 0, 0, 0, 0,
-                     0, 0, 0, 0, 0, 0, 0, 0,
-                     0, 0, 0, 0, 0, 0, 0, 0,
-                     0, 0, 0, 0, 0, 0, 0, 0,
-                     0, 0, 1, 0, 0, 1, 0, 0]
+    self.wKnights = int("00000000"
+                        "00000000"
+                        "00000000"
+                        "00000000"
+                        "00000000"
+                        "00000000"
+                        "00000000"
+                        "01000010", 2)
 
-    self.wQueens = [0, 0, 0, 0, 0, 0, 0, 0, 
-                    0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 1, 0, 0, 0, 0]
+    self.bKnights = int("01000010"
+                        "00000000"
+                        "00000000"
+                        "00000000"
+                        "00000000"
+                        "00000000"
+                        "00000000"
+                        "00000000", 2)
+
+    self.wBishops = int("00000000"
+                        "00000000"
+                        "00000000"
+                        "00000000"
+                        "00000000"
+                        "00000000"
+                        "00000000"
+                        "00100100", 2)
+
+    self.bBishops = int("00100100"
+                        "00000000"
+                        "00000000"
+                        "00000000"
+                        "00000000"
+                        "00000000"
+                        "00000000"
+                        "00000000", 2)
+
+    self.wQueens = int("00000000"
+                       "00000000"
+                       "00000000"
+                       "00000000"
+                       "00000000"
+                       "00000000"
+                       "00000000"
+                       "00010000", 2)
+
+    self.bQueens = int("00010000"
+                       "00000000"
+                       "00000000"
+                       "00000000"
+                       "00000000"
+                       "00000000"
+                       "00000000"
+                       "00000000", 2)
+
+    self.wKing = int("00000000"
+                     "00000000"
+                     "00000000"
+                     "00000000"
+                     "00000000"
+                     "00000000"
+                     "00000000"
+                     "00001000", 2)
+
+    self.bKing = int("00001000"
+                     "00000000"
+                     "00000000"
+                     "00000000"
+                     "00000000"
+                     "00000000"
+                     "00000000"
+                     "00000000", 2)
+
+    self.wPawns = int("00000000"
+                      "00000000"
+                      "00000000"
+                      "00000000"
+                      "00000000"
+                      "00000000"
+                      "11111111"
+                      "00000000", 2)
+
+    self.bPawns = int("00000000"
+                      "11111111"
+                      "00000000"
+                      "00000000"
+                      "00000000"
+                      "00000000"
+                      "00000000"
+                      "00000000", 2)
+
+  def pieces(self):
+    return {'wRook': self.wRooks, 'bRook': self.bRooks,
+            'wKnight': self.wKnights, 'bKnight': self.bKnights,
+            'wBishop': self.wBishops, 'bBishop': self.bBishops,
+            'wQueen': self.wQueens, 'bQueen': self.bQueens,
+            'wKing': self.wKing, 'bKing': self.bKing,
+            'wPawn': self.wPawns, 'bPawn': self.bPawns}
+  
+  def getSquare(self, mousePosition):
+    return int((mousePosition[0] // (self.size / 8)) + (mousePosition[1] // (self.size / 8) * 8))
+
+  def getPiece(self, square):
+    for pieceName, pieceState in self.pieces().items():
+      pieceState >>= 63 - square
+      if pieceState & 1:
+        return pieceName[0]
+    return 'empty'
+
+  def updateMoves(self, square, pieceName):
+    if pieceName == 'wRook':
+      pass
 
 
-    self.wKing = [0, 0, 0, 0, 0, 0, 0, 0, 
-                  0, 0, 0, 0, 0, 0, 0, 0,
-                  0, 0, 0, 0, 0, 0, 0, 0,
-                  0, 0, 0, 0, 0, 0, 0, 0,
-                  0, 0, 0, 0, 0, 0, 0, 0,
-                  0, 0, 0, 0, 0, 0, 0, 0,
-                  0, 0, 0, 0, 0, 0, 0, 0,
-                  0, 0, 0, 0, 1, 0, 0, 0]
-
-    self.wPawns = [0, 0, 0, 0, 0, 0, 0, 0, 
-                   0, 0, 0, 0, 0, 0, 0, 0,
-                   0, 0, 0, 0, 0, 0, 0, 0,
-                   0, 0, 0, 0, 0, 0, 0, 0,
-                   0, 0, 0, 0, 0, 0, 0, 0,
-                   0, 0, 0, 0, 0, 0, 0, 0,
-                   1, 1, 1, 1, 1, 1, 1, 1,
-                   0, 0, 0, 0, 0, 0, 0, 0]
-
-
-  # board drawing
-  def drawPiece(self, piece, square, squareSize, window):
-    img = pg.image.load('./assets/' + piece + '.png')
-    img = pg.transform.scale(img, (squareSize, squareSize))
-    window.blit(img, ((square % 8) * squareSize, (square // 8) * squareSize))
-
-  def drawMove(self, square, squareSize, window):
-    alphaSurface = pg.Surface((squareSize, squareSize), pg.SRCALPHA)
-    pg.draw.circle(alphaSurface, (0, 0, 0, 128), (squareSize / 2, squareSize / 2), squareSize / 8)
-    window.blit(alphaSurface, (squareSize * (square % 8), squareSize * (square // 8)))
-
-  def draw(self, window, squareSize):
-    # background
+  def drawBackground(self, display):
     for y in range(8):
       for x in range(8):
         if (x + y) % 2 == 0:
@@ -83,89 +147,30 @@ class board:
         else:
           color = (112, 146, 80)
 
-        square = pg.Rect(x * squareSize, y * squareSize, squareSize, squareSize)
-        pg.draw.rect(window, color, square)
+        square = pg.Rect(x * self.size / 8, y * self.size / 8, self.size / 8, self.size / 8)
+        pg.draw.rect(display, color, square)
 
-    # pieces
-    for square in range(64):
-      if self.wRooks[square]:
-        self.drawPiece('wRook', square, squareSize, window)
-      elif self.wKnights[square]:
-        self.drawPiece('wKnight', square, squareSize, window)
-      elif self.wBishops[square]:
-        self.drawPiece('wBishop', square, squareSize, window)
-      elif self.wQueens[square]:
-        self.drawPiece('wQueen', square, squareSize, window)
-      elif self.wKing[square]:
-        self.drawPiece('wKing', square, squareSize, window)
-      elif self.wPawns[square]:
-        self.drawPiece('wPawn', square, squareSize, window)
+  def drawPieces(self, display):
+    for pieceName, pieceState in self.pieces().items():
+      img = pg.image.load('./assets/' + pieceName + '.png')
+      img = pg.transform.scale(img, (self.size / 8, self.size / 8))
+      for i in range(64):
+        if pieceState & 1:
+          display.blit(img, (((63 - i) % 8) * self.size / 8, ((63 - i) // 8) * self.size / 8))
+        pieceState >>= 1
 
-      if square in self.moves:
-        self.drawMove(square, squareSize, window)
-
-  def isWhite(self, square):
-    if self.wRooks[square] == 1 or self.wKnights[square] == 1 or self.wBishops[square] == 1 or self.wQueens[square] == 1 or self.wKing[square] == 1 or self.wPawns[square] == 1:
-      return True
-    else:
-      return False
-
-  def isBlack(self, square):
+  def drawMoves(self, display):
     pass
 
-  def checkMoves(self, piece, square):
-    output = []
+  def draw(self, display):
+    self.drawBackground(display)
 
-    if piece == 'wRook':
-      for dx in range(1, 8 - (square % 8)):
-        if self.isWhite(square + dx):
-          break
-        elif self.isBlack(square + dx):
-          output.append(square + dx)
-          break
-        else:
-          output.append(square + dx)
-      for dx in range(1, (square % 8) + 1):
-        if self.isWhite(square - dx):
-          break
-        elif self.isBlack(square - dx):
-          output.append(square - dx)
-          break
-        else:
-          output.append(square - dx)
-      for dy in range(8, 64 - (square // 8), 8):
-        if self.isWhite(square + dy):
-          break
-        elif self.isBlack(square + dy):
-          output.append(square + dy)
-          break
-        else:
-          output.append(square + dy)
-      for dy in range(8, square + 8, 8):
-        if self.isWhite(square - dy):
-          break
-        elif self.isBlack(square - dy):
-          output.append(square - dy)
-          break
-        else:
-          output.append(square - dy)
-    self.moves = output
+    self.drawPieces(display)
 
-  def checkEvent(self, mousePosition, squareSize):
-    square = int((mousePosition[0] // squareSize) + (mousePosition[1] // squareSize) * 8)
-    if square in self.moves:
+    self.drawMoves(display)
 
-    if self.wRooks[square]:
-      self.checkMoves('wRook', square)
-      print(self.moves)
 
-pg.init()
-screenSize = 1000
-squareSize = screenSize / 8
-window = pg.display.set_mode((screenSize, screenSize))
-pg.display.set_caption('chess bot')
 gameBoard = board()
-
 
 running = True
 while running:
@@ -174,11 +179,11 @@ while running:
       running = False
     
     if event.type == pg.MOUSEBUTTONDOWN:
-      mousePosition = pg.mouse.get_pos()
-      gameBoard.checkEvent(mousePosition, squareSize)
+      square = gameBoard.getSquare(pg.mouse.get_pos())
+      print(gameBoard.getPiece(square))
+      print(square)
 
-  gameBoard.draw(window, squareSize)
-
+  gameBoard.draw(window)
   pg.display.flip()
 
 pg.quit()
