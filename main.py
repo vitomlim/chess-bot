@@ -7,6 +7,16 @@ window = pg.display.set_mode((1000, 1000))
 class board:
   def __init__(self):
     self.size = 1000
+    self.squareSize = self.size / 8
+
+    self.moves = int("00000000"
+                     "00000000"
+                     "00000000"
+                     "00000000"
+                     "00000000"
+                     "00000000"
+                     "00000000"
+                     "00000000", 2)
 
     self.wRooks = int("00000000"
                       "00000000"
@@ -123,22 +133,40 @@ class board:
             'wQueen': self.wQueens, 'bQueen': self.bQueens,
             'wKing': self.wKing, 'bKing': self.bKing,
             'wPawn': self.wPawns, 'bPawn': self.bPawns}
-  
-  def getSquare(self, mousePosition):
-    return int((mousePosition[0] // (self.size / 8)) + (mousePosition[1] // (self.size / 8) * 8))
 
+  # bitboards for each color, used for calculating moves
+  def whitePieces(self):
+    return self.wRooks | self.wKnights | self.wBishops | self.wQueens | self.wKing | self.wPawns
+
+  def blackPieces(self):
+    return self.bRooks | self.bKnights | self.bBishops | self.bQueens | self.bKing | self.bPawns
+
+
+  # position is counted from right to left and from bottom to top
+  def getSquare(self, mousePosition):
+    return int(63 - ((mousePosition[0] // self.squareSize) + (mousePosition[1] // self.squareSize) * 8))
+
+
+  # only executed on input, not insanely optimized
   def getPiece(self, square):
     for pieceName, pieceState in self.pieces().items():
-      pieceState >>= 63 - square
+      pieceState >>= square
       if pieceState & 1:
-        return pieceName[0]
+        return pieceName
     return 'empty'
 
+
+  # could use bitboards for every piece in every square, but thats too monkey
   def updateMoves(self, square, pieceName):
-    if pieceName == 'wRook':
-      pass
+    if pieceName == 'empty':
+      self.moves = 0
+    else:
+      pieceColor = pieceName[0]
+      if pieceName[1:] == 'Rook':
+        pass
 
 
+  # drawing functions
   def drawBackground(self, display):
     for y in range(8):
       for x in range(8):
@@ -147,26 +175,29 @@ class board:
         else:
           color = (112, 146, 80)
 
-        square = pg.Rect(x * self.size / 8, y * self.size / 8, self.size / 8, self.size / 8)
+        square = pg.Rect(x * self.squareSize, y * self.squareSize, self.squareSize, self.squareSize)
         pg.draw.rect(display, color, square)
 
   def drawPieces(self, display):
     for pieceName, pieceState in self.pieces().items():
       img = pg.image.load('./assets/' + pieceName + '.png')
-      img = pg.transform.scale(img, (self.size / 8, self.size / 8))
-      for i in range(64):
-        if pieceState & 1:
-          display.blit(img, (((63 - i) % 8) * self.size / 8, ((63 - i) // 8) * self.size / 8))
-        pieceState >>= 1
+      img = pg.transform.scale(img, (self.squareSize, self.squareSize))
+
+      # kernighan algorithm
+      while pieceState:
+        b = pieceState & -pieceState
+        square = 64 - b.bit_length()
+        x = (square % 8) * self.squareSize
+        y = (square // 8) * self.squareSize
+        display.blit(img, (x , y))
+        pieceState &= pieceState - 1
 
   def drawMoves(self, display):
     pass
 
   def draw(self, display):
     self.drawBackground(display)
-
     self.drawPieces(display)
-
     self.drawMoves(display)
 
 
@@ -180,8 +211,7 @@ while running:
     
     if event.type == pg.MOUSEBUTTONDOWN:
       square = gameBoard.getSquare(pg.mouse.get_pos())
-      print(gameBoard.getPiece(square))
-      print(square)
+      gameBoard.updateMoves(square, gameBoard.getPiece(square))
 
   gameBoard.draw(window)
   pg.display.flip()
