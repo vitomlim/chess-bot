@@ -31,6 +31,11 @@ class board:
     self.blackPieces = self.bRooks | self.bKnights | self.bBishops | self.bQueens | self.bKing | self.bPawns
     self.allPieces = self.whitePieces | self.blackPieces
 
+    self.wBigCastleRights = True
+    self.wSmallCastleRights = True
+    self.bBigCastleRights = True
+    self.bSmallCastleRIghts = True
+
     # -------------------------------------------------------
     # -------------------- LOOKUP TABLES --------------------
     # -------------------------------------------------------
@@ -106,6 +111,49 @@ class board:
         if (0 <= x + dx <= 7) & (0 <= y + dy <= 7):
           self.kingMoves[square] |= (1 << ((y + dy) * 8 + (x + dx)))
 
+    # pawn
+    self.wPawnMoves = [0] * 64
+    for square in range(64):
+      y = square // 8
+
+      if y != 7:
+        self.wPawnMoves[square] |= (1 << square + 8)
+        if y == 1:
+          self.wPawnMoves[square] |= (1 << square + 16)
+
+    self.wPawnCaptures = [0] * 64
+    for square in range(64):
+      x = square % 8
+      y = square // 8
+
+      if y != 7:
+        if x > 0:
+          self.wPawnCaptures[square] |= (1 << square + 7)
+        if x < 7:
+          self.wPawnCaptures[square] |= (1 << square + 9)
+
+    self.bPawnMoves = [0] * 64
+    for square in range(64):
+      y = square // 8
+
+      if y != 0:
+        self.bPawnMoves[square] |= (1 << square - 8)
+        if y == 6:
+          self.bPawnMoves[square] |= (1 << square - 16)
+
+    self.bPawnCaptures = [0] * 64
+    for square in range(64):
+      x = square % 8
+      y = square // 8
+
+      if y != 0:
+        if x > 0:
+          self.bPawnCaptures[square] |= (1 << square - 9)
+        if x < 7:
+          self.bPawnCaptures[square] |= (1 << square - 7)
+
+
+
   def pieces(self):
     return {'wRooks': self.wRooks, 'bRooks': self.bRooks,
             'wKnights': self.wKnights, 'bKnights': self.bKnights,
@@ -131,6 +179,16 @@ class board:
 
     for pieceName, pieceState in self.pieces().items():
       if pieceState & 1 << originalSquare:
+
+        # updating castling rights for voluntary movement
+        if pieceName == 'wKing':
+          self.wBigCastleRights = False
+          self.wSmallCastleRights = False
+        if pieceName == 'wRooks' and (1 << originalSquare) & int('00000001', 2):
+          self.wSmallCastleRights = False
+        if pieceName == 'wRooks' and (1 << originalSquare) & int('10000000', 2):
+          self.wBigCastleRights = False
+
         setattr(self, pieceName, (pieceState | (1 << destinationSquare)) & ~(1 << originalSquare))
       if pieceState & 1 << destinationSquare:
         setattr(self, pieceName, pieceState & ~(1 << destinationSquare))
@@ -176,43 +234,46 @@ class board:
 
     if 1 << square & self.wRooks:
       self.moves = self.calculateCollisions(square, self.rookMoves, 1)
-
     elif 1 << square & self.bRooks:
       self.moves = self.calculateCollisions(square, self.rookMoves, 0)
 
     elif 1 << square & self.wKnights:
       self.moves = self.knightMoves[square] & ~self.whitePieces
-
     elif 1 << square & self.bKnights:
       self.moves = self.knightMoves[square] & ~self.blackPieces
 
     elif 1 << square & self.wBishops:
       self.moves = self.calculateCollisions(square, self.bishopMoves, 1)
-
     elif 1 << square & self.bBishops:
       self.moves = self.calculateCollisions(square, self.bishopMoves, 0)
 
     elif 1 << square & self.wQueens:
       self.moves = self.calculateCollisions(square, self.queenMoves, 1)
-
     elif 1 << square & self.bQueens:
       self.moves = self.calculateCollisions(square, self.queenMoves, 0)
 
     elif 1 << square & self.wKing:
       self.moves = self.kingMoves[square] & ~self.whitePieces
-
+      if self.wSmallCastleRights and self.whitePieces & int("00001001", 2):
+        self.moves |= 1 << 1
     elif 1 << square & self.bKing:
       self.moves = self.kingMoves[square] & ~self.blackPieces
 
     elif 1 << square & self.wPawns:
-      pass
+
+      # pawn is immediately blocked
+      if (1 << square + 8) & self.allPieces:
+        self.moves = self.wPawnCaptures[square] & self.blackPieces
+      else:
+        self.moves = self.wPawnMoves[square] & ~self.allPieces | (self.wPawnCaptures[square] & self.blackPieces)
+    elif 1 << square & self.bPawns:
+      if ((1 << square) >> 8) & self.allPieces:
+        self.moves = self.bPawnCaptures[square] & self.whitePieces
+      else:
+        self.moves = (self.bPawnMoves[square] & ~self.allPieces) | (self.bPawnCaptures[square] & self.whitePieces)
 
     else:
       self.moves = 0
-
-
-
-
 
 
   def draw(self, display):
