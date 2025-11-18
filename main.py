@@ -2,11 +2,11 @@ import pygame as pg
 import sys
 
 pg.init()
-window = pg.display.set_mode((1000, 1000))
+window = pg.display.set_mode((960, 960))
 
 class board:
   def __init__(self):
-    self.size = 1000
+    self.size = 960
     self.squareSize = self.size / 8
 
     # ---------------------------------------------------------------------
@@ -14,6 +14,8 @@ class board:
     # ---------------------------------------------------------------------
 
     self.moves = int("0" * 64, 2)
+    self.lastMove = int("0" * 64, 2)
+
     self.wRooks = int("00000000" * 7 + "10000001", 2)
     self.bRooks = int("10000001" + "00000000" * 7, 2)
     self.wKnights = int("00000000" * 7 + "01000010", 2)
@@ -34,7 +36,9 @@ class board:
     self.wBigCastleRights = True
     self.wSmallCastleRights = True
     self.bBigCastleRights = True
-    self.bSmallCastleRIghts = True
+    self.bSmallCastleRights = True
+
+    self.isWhiteTurn = True
 
     # -------------------------------------------------------
     # -------------------- LOOKUP TABLES --------------------
@@ -111,6 +115,17 @@ class board:
         if (0 <= x + dx <= 7) & (0 <= y + dy <= 7):
           self.kingMoves[square] |= (1 << ((y + dy) * 8 + (x + dx)))
 
+    # adding castling
+    self.wKingSmallCastleMove = 1 << 1
+    self.wKingBigCastleMove = 1 << 5
+    self.bKingSmallCastleMove = 1 << 57
+    self.bKingBigCastleMove = 1 << 61
+
+    self.wSmallCastleBlockers = 1 << 1 | 1 << 2
+    self.wBigCastleBlockers = 1 << 4 | 1 << 5 | 1 << 6
+    self.bSmallCastleBlockers = 1 << 57 | 1 << 58
+    self.bBigCastleBlockers = 1 << 60 | 1 << 61 | 1 << 62
+
     # pawn
     self.wPawnMoves = [0] * 64
     for square in range(64):
@@ -175,26 +190,92 @@ class board:
       return False
 
 
+  def castleMoveHandling(self, pieceName, destinationSquare, originalSquare):
+    # only checks white castling if the piece is white
+    if pieceName[0] == 'w':
+      # only small castling
+      if self.wSmallCastleRights:
+
+        # removing castling rights and handling rook castle movement
+        if pieceName == 'wKing':
+          self.wSmallCastleRights = False
+          # if is small castling (wKing from original square to square 1)
+          if destinationSquare == 1:
+            self.wRooks |= 1 << 2
+            self.wRooks &= ~1
+
+        # removing castling rights for right rook movement
+        if pieceName == 'wRooks' and originalSquare == 0:
+          self.wSmallCastleRights = False
+
+      # only big castling
+      if self.wBigCastleRights:
+
+        # removing castling rights and handling rook castle movement
+        if pieceName == 'wKing':
+          self.wBigCastleRights = False
+          # if is big castling (wKing from original square to square 5)
+          if destinationSquare == 5:
+            self.wRooks |= 1 << 4
+            self.wRooks &= ~(1 << 7)
+
+        # removing castling rights for left rook movement
+        if pieceName == 'wRooks' and originalSquare == 7:
+          self.wBigCastleRights = False
+
+    # else: the piece is black
+    else:
+      # only small castling
+      if self.bSmallCastleRights:
+
+        # removing castling rights and handling rook castle movement
+        if pieceName == 'bKing':
+          self.bSmallCastleRights = False
+          # if is small castling (bKing from original square to square 57)
+          if destinationSquare == 57:
+            self.bRooks |= 1 << 58
+            self.bRooks &= ~(1 << 56)
+
+        # removing castling rights for right rook movement
+        if pieceName == 'bRooks' and originalSquare == 56:
+          self.bSmallCastleRights = False
+
+      # only big castling
+      if self.bBigCastleRights:
+
+        # removing castling rights and handling rook castle movement
+        if pieceName == 'bKing':
+          self.bBigCastleRights = False
+          # if is big castling (wKing from original square to square 5)
+          if destinationSquare == 61:
+            self.bRooks |= 1 << 60
+            self.bRooks &= ~(1 << 63)
+
+        # removing castling rights for left rook movement
+        if pieceName == 'bRooks' and originalSquare == 63:
+          self.bBigCastleRights = False
+
+
   def move(self, destinationSquare, originalSquare):
 
     for pieceName, pieceState in self.pieces().items():
+      # piece that will move
       if pieceState & 1 << originalSquare:
 
-        # updating castling rights for voluntary movement
-        if pieceName == 'wKing':
-          self.wBigCastleRights = False
-          self.wSmallCastleRights = False
-        if pieceName == 'wRooks' and (1 << originalSquare) & int('00000001', 2):
-          self.wSmallCastleRights = False
-        if pieceName == 'wRooks' and (1 << originalSquare) & int('10000000', 2):
-          self.wBigCastleRights = False
+        self.castleMoveHandling(pieceName, destinationSquare, originalSquare)
 
         setattr(self, pieceName, (pieceState | (1 << destinationSquare)) & ~(1 << originalSquare))
+
+      # piece that will be captured (if there is one)
       if pieceState & 1 << destinationSquare:
-        setattr(self, pieceName, pieceState & ~(1 << destinationSquare))
+
+        pieceState &= ~(1 << destinationSquare)
+        setattr(self, pieceName, pieceState)
 
     self.moves = 0
     self.selectedSquare = -1
+    self.lastMove = 1 << originalSquare | 1 << destinationSquare
+    self.isWhiteTurn = not self.isWhiteTurn
 
     self.whitePieces = self.wRooks | self.wKnights | self.wBishops | self.wQueens | self.wKing | self.wPawns
     self.blackPieces = self.bRooks | self.bKnights | self.bBishops | self.bQueens | self.bKing | self.bPawns
@@ -222,58 +303,93 @@ class board:
         output |= directionMoves
       else:
         output |= directionRay[square]
+
     if isWhite:
       output &= ~self.whitePieces
     else:
       output &= ~self.blackPieces
     return output
 
-
   def updateMoves(self, square):
     self.selectedSquare = square
 
-    if 1 << square & self.wRooks:
-      self.moves = self.calculateCollisions(square, self.rookMoves, 1)
-    elif 1 << square & self.bRooks:
-      self.moves = self.calculateCollisions(square, self.rookMoves, 0)
+    if self.isWhiteTurn:
+      # not special pieces
+      if 1 << square & self.wRooks:
+        self.moves = self.calculateCollisions(square, self.rookMoves, 1)
+      elif 1 << square & self.wKnights:
+        self.moves = self.knightMoves[square] & ~self.whitePieces
+      elif 1 << square & self.wBishops:
+        self.moves = self.calculateCollisions(square, self.bishopMoves, 1)
+      elif 1 << square & self.wQueens:
+        self.moves = self.calculateCollisions(square, self.queenMoves, 1)
 
-    elif 1 << square & self.wKnights:
-      self.moves = self.knightMoves[square] & ~self.whitePieces
-    elif 1 << square & self.bKnights:
-      self.moves = self.knightMoves[square] & ~self.blackPieces
+      # king update has to handle castling
+      elif 1 << square & self.wKing:
+        # normal moves
+        self.moves = self.kingMoves[square] & ~self.whitePieces
 
-    elif 1 << square & self.wBishops:
-      self.moves = self.calculateCollisions(square, self.bishopMoves, 1)
-    elif 1 << square & self.bBishops:
-      self.moves = self.calculateCollisions(square, self.bishopMoves, 0)
+        if self.wSmallCastleRights:
+          # no pieces in the way
+          if not (self.wSmallCastleBlockers & self.allPieces):
+            self.moves |= self.wKingSmallCastleMove
+          # no checks in the way?
 
-    elif 1 << square & self.wQueens:
-      self.moves = self.calculateCollisions(square, self.queenMoves, 1)
-    elif 1 << square & self.bQueens:
-      self.moves = self.calculateCollisions(square, self.queenMoves, 0)
+        if self.wBigCastleRights:
+          # no pieces in the way
+          if not (self.wBigCastleBlockers & self.allPieces):
+            self.moves |= self.wKingBigCastleMove
+          # no checks in the way?
 
-    elif 1 << square & self.wKing:
-      self.moves = self.kingMoves[square] & ~self.whitePieces
-      if self.wSmallCastleRights and self.whitePieces & int("00001001", 2):
-        self.moves |= 1 << 1
-    elif 1 << square & self.bKing:
-      self.moves = self.kingMoves[square] & ~self.blackPieces
+      # pawn update has to handle enpassant and unique collision
+      elif 1 << square & self.wPawns:
 
-    elif 1 << square & self.wPawns:
+        # collision check
+        if (1 << square + 8) & self.allPieces:
+          self.moves = self.wPawnCaptures[square] & self.blackPieces
+        else:
+          self.moves = self.wPawnMoves[square] & ~self.allPieces | (self.wPawnCaptures[square] & self.blackPieces)
 
-      # pawn is immediately blocked
-      if (1 << square + 8) & self.allPieces:
-        self.moves = self.wPawnCaptures[square] & self.blackPieces
       else:
-        self.moves = self.wPawnMoves[square] & ~self.allPieces | (self.wPawnCaptures[square] & self.blackPieces)
-    elif 1 << square & self.bPawns:
-      if ((1 << square) >> 8) & self.allPieces:
-        self.moves = self.bPawnCaptures[square] & self.whitePieces
-      else:
-        self.moves = (self.bPawnMoves[square] & ~self.allPieces) | (self.bPawnCaptures[square] & self.whitePieces)
+        self.moves = 0
 
     else:
-      self.moves = 0
+      # not special pieces
+      if 1 << square & self.bRooks:
+        self.moves = self.calculateCollisions(square, self.rookMoves, 0)
+      elif 1 << square & self.bKnights:
+        self.moves = self.knightMoves[square] & ~self.blackPieces
+      elif 1 << square & self.bBishops:
+        self.moves = self.calculateCollisions(square, self.bishopMoves, 0)
+      elif 1 << square & self.bQueens:
+        self.moves = self.calculateCollisions(square, self.queenMoves, 0)
+
+      # king update has to handle castling
+      elif 1 << square & self.bKing:
+        # normal moves
+        self.moves = self.kingMoves[square] & ~self.blackPieces
+
+        if self.bSmallCastleRights:
+          # no pieces in the way
+          if not (self.bSmallCastleBlockers & self.allPieces):
+            self.moves |= self.bKingSmallCastleMove
+
+        if self.bBigCastleRights:
+          # no pieces in the way
+          if not (self.bBigCastleBlockers & self.allPieces):
+            self.moves |= self.bKingBigCastleMove
+
+      # pawn update has to handle enpassant and unique collision
+      elif 1 << square & self.bPawns:
+
+        # collision check
+        if ((1 << square) >> 8) & self.allPieces:
+          self.moves = self.bPawnCaptures[square] & self.whitePieces
+        else:
+          self.moves = (self.bPawnMoves[square] & ~self.allPieces) | (self.bPawnCaptures[square] & self.whitePieces)
+      
+      else:
+        self.moves = 0
 
 
   def draw(self, display):
@@ -287,6 +403,24 @@ class board:
 
         square = pg.Rect(x * self.squareSize, y * self.squareSize, self.squareSize, self.squareSize)
         pg.draw.rect(display, color, square)
+
+    # drawing the last move different colored squares
+    lastMoveBitBoard = self.lastMove
+    while lastMoveBitBoard:
+      b = lastMoveBitBoard & -lastMoveBitBoard
+      square = 64 - b.bit_length()
+      x = (square % 8)
+      y = (square // 8)
+
+      if (x + y) % 2 == 0:
+        color = (245, 246, 130)
+      else:
+        color = (185, 202, 67)
+
+      square = pg.Rect(x * self.squareSize, y * self.squareSize, self.squareSize, self.squareSize)
+      pg.draw.rect(display, color, square)
+
+      lastMoveBitBoard &= lastMoveBitBoard - 1
  
     # drawing pieces
     for pieceName, pieceState in self.pieces().items():
