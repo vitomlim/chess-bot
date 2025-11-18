@@ -425,7 +425,7 @@ class board:
     # drawing pieces
     for pieceName, pieceState in self.pieces().items():
       img = pg.image.load('./assets/' + pieceName + '.png')
-      img = pg.transform.scale(img, (self.squareSize, self.squareSize))
+      img = pg.transform.smoothscale(img, (self.squareSize, self.squareSize))
 
       # iterates through the ones in the bit board
       while pieceState:
@@ -443,8 +443,9 @@ class board:
       square = 64 - b.bit_length()
       x = (square % 8)
       y = (square // 8)
-      transparentCircle = pg.Surface((self.squareSize, self.squareSize), pg.SRCALPHA)
-      pg.draw.circle(transparentCircle, (0, 0, 0, 128), (self.squareSize / 2, self.squareSize / 2), self.squareSize / 4)
+      transparentCircle = pg.Surface((self.squareSize * 4, self.squareSize * 4), pg.SRCALPHA)
+      pg.draw.circle(transparentCircle, (0, 0, 0, 128), (self.squareSize * 2, self.squareSize * 2), self.squareSize / 2)
+      transparentCircle = pg.transform.smoothscale(transparentCircle, (self.squareSize, self.squareSize))
       display.blit(transparentCircle, (x * self.squareSize, y * self.squareSize))
       temp &= temp - 1
 
