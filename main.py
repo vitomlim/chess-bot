@@ -167,7 +167,9 @@ class board:
         if x < 7:
           self.bPawnCaptures[square] |= (1 << square - 7)
 
-
+  # -----------------------------------------------------------
+  # -------------------- UTILITY FUNCTIONS --------------------
+  # -----------------------------------------------------------
 
   def pieces(self):
     return {'wRooks': self.wRooks, 'bRooks': self.bRooks,
@@ -184,76 +186,80 @@ class board:
 
 
   def isMovable(self, square):
-    if self.moves & 1 << square:
-      return True
-    else:
-      return False
+    return self.moves & 1 << square
 
+  # ----------------------------------------------------------
+  # -------------------- MOVING FUNCTIONS --------------------
+  # ----------------------------------------------------------
 
   def castleMoveHandling(self, pieceName, destinationSquare, originalSquare):
-    # only checks white castling if the piece is white
-    if pieceName[0] == 'w':
-      # only small castling
-      if self.wSmallCastleRights:
 
-        # removing castling rights and handling rook castle movement
-        if pieceName == 'wKing':
-          self.wSmallCastleRights = False
-          # if is small castling (wKing from original square to square 1)
-          if destinationSquare == 1:
-            self.wRooks |= 1 << 2
-            self.wRooks &= ~1
+    if self.wSmallCastleRights:
+      # removing castling rights and handling rook castle movement
+      if pieceName == 'wKing':
+        self.wSmallCastleRights = False
+        # if is small castling (wKing from original square to square 1)
+        if destinationSquare == 1:
+          self.wRooks |= 1 << 2
+          self.wRooks &= ~1
 
-        # removing castling rights for right rook movement
-        if pieceName == 'wRooks' and originalSquare == 0:
-          self.wSmallCastleRights = False
+      # removing castling rights for right rook movement/losing
+      if originalSquare == 0 or destinationSquare == 0:
+        self.wSmallCastleRights = False
 
-      # only big castling
-      if self.wBigCastleRights:
+    if self.wBigCastleRights:
+      # removing castling rights and handling rook castle movement
+      if pieceName == 'wKing':
+        self.wBigCastleRights = False
+        # if is big castling (wKing from original square to square 5)
+        if destinationSquare == 5:
+          self.wRooks |= 1 << 4
+          self.wRooks &= ~(1 << 7)
 
-        # removing castling rights and handling rook castle movement
-        if pieceName == 'wKing':
-          self.wBigCastleRights = False
-          # if is big castling (wKing from original square to square 5)
-          if destinationSquare == 5:
-            self.wRooks |= 1 << 4
-            self.wRooks &= ~(1 << 7)
+      # removing castling rights for left rook movement/losing
+      if originalSquare == 7 or destinationSquare == 7:
+        self.wBigCastleRights = False
 
-        # removing castling rights for left rook movement
-        if pieceName == 'wRooks' and originalSquare == 7:
-          self.wBigCastleRights = False
+    if self.bSmallCastleRights:
+      # removing castling rights and handling rook castle movement
+      if pieceName == 'bKing':
+        self.bSmallCastleRights = False
+        # if is small castling (bKing from original square to square 57)
+        if destinationSquare == 57:
+          self.bRooks |= 1 << 58
+          self.bRooks &= ~(1 << 56)
 
-    # else: the piece is black
-    else:
-      # only small castling
-      if self.bSmallCastleRights:
+      # removing castling rights for right rook movement/losing
+      if originalSquare == 56 or destinationSquare == 56:
+        self.bSmallCastleRights = False
 
-        # removing castling rights and handling rook castle movement
-        if pieceName == 'bKing':
-          self.bSmallCastleRights = False
-          # if is small castling (bKing from original square to square 57)
-          if destinationSquare == 57:
-            self.bRooks |= 1 << 58
-            self.bRooks &= ~(1 << 56)
+    if self.bBigCastleRights:
+      # removing castling rights and handling rook castle movement
+      if pieceName == 'bKing':
+        self.bBigCastleRights = False
+        # if is big castling (wKing from original square to square 5)
+        if destinationSquare == 61:
+          self.bRooks |= 1 << 60
+          self.bRooks &= ~(1 << 63)
 
-        # removing castling rights for right rook movement
-        if pieceName == 'bRooks' and originalSquare == 56:
-          self.bSmallCastleRights = False
+      # removing castling rights for left rook movement/losing
+      if originalSquare == 63 or destinationSquare == 63:
+        self.bBigCastleRights = False
 
-      # only big castling
-      if self.bBigCastleRights:
 
-        # removing castling rights and handling rook castle movement
-        if pieceName == 'bKing':
-          self.bBigCastleRights = False
-          # if is big castling (wKing from original square to square 5)
-          if destinationSquare == 61:
-            self.bRooks |= 1 << 60
-            self.bRooks &= ~(1 << 63)
+  def enpassantMoveHandling(self, pieceName, destinationSquare, originalSquare):
+    if pieceName == 'wPawns' and self.wPawnCaptures[originalSquare] & 1 << destinationSquare and not (1 << destinationSquare & self.blackPieces):
+      self.bPawns &= ~(1 << destinationSquare - 8)
 
-        # removing castling rights for left rook movement
-        if pieceName == 'bRooks' and originalSquare == 63:
-          self.bBigCastleRights = False
+    elif pieceName == 'bPawns' and self.bPawnCaptures[originalSquare] & 1 << destinationSquare and not (1 << destinationSquare & self.whitePieces):
+      self.wPawns &= ~(1 << destinationSquare + 8)
+
+
+  def promotionMoveHandling(self, pieceName, destinationSquare, originalSquare):
+    if pieceName == 'wPawns' and destinationSquare // 8 == 7:
+      promotedPiece = input()
+      setattr(self, promotedPiece, getattr(self, promotedPiece) | 1 << destinationSquare)
+      self.wPawns &= ~(1 << destinationSquare)
 
 
   def move(self, destinationSquare, originalSquare):
@@ -262,9 +268,11 @@ class board:
       # piece that will move
       if pieceState & 1 << originalSquare:
 
-        self.castleMoveHandling(pieceName, destinationSquare, originalSquare)
-
         setattr(self, pieceName, (pieceState | (1 << destinationSquare)) & ~(1 << originalSquare))
+
+        self.castleMoveHandling(pieceName, destinationSquare, originalSquare)
+        self.enpassantMoveHandling(pieceName, destinationSquare, originalSquare)
+        self.promotionMoveHandling(pieceName, destinationSquare, originalSquare)
 
       # piece that will be captured (if there is one)
       if pieceState & 1 << destinationSquare:
@@ -281,6 +289,9 @@ class board:
     self.blackPieces = self.bRooks | self.bKnights | self.bBishops | self.bQueens | self.bKing | self.bPawns
     self.allPieces = self.whitePieces | self.blackPieces
 
+  # ---------------------------------------------------------------------
+  # -------------------- CALCULATING MOVES FUNCTIONS --------------------
+  # ---------------------------------------------------------------------
 
   # using the lookup tables calculates collisions and returns possible moves for the given square
   # used for rooks, bishops and queens
@@ -312,20 +323,21 @@ class board:
 
   def updateMoves(self, square):
     self.selectedSquare = square
+    squareBitBoard = 1 << square
 
     if self.isWhiteTurn:
       # not special pieces
-      if 1 << square & self.wRooks:
+      if squareBitBoard & self.wRooks:
         self.moves = self.calculateCollisions(square, self.rookMoves, 1)
-      elif 1 << square & self.wKnights:
+      elif squareBitBoard & self.wKnights:
         self.moves = self.knightMoves[square] & ~self.whitePieces
-      elif 1 << square & self.wBishops:
+      elif squareBitBoard & self.wBishops:
         self.moves = self.calculateCollisions(square, self.bishopMoves, 1)
-      elif 1 << square & self.wQueens:
+      elif squareBitBoard & self.wQueens:
         self.moves = self.calculateCollisions(square, self.queenMoves, 1)
 
       # king update has to handle castling
-      elif 1 << square & self.wKing:
+      elif squareBitBoard & self.wKing:
         # normal moves
         self.moves = self.kingMoves[square] & ~self.whitePieces
 
@@ -342,30 +354,38 @@ class board:
           # no checks in the way?
 
       # pawn update has to handle enpassant and unique collision
-      elif 1 << square & self.wPawns:
+      elif squareBitBoard & self.wPawns:
 
         # collision check
-        if (1 << square + 8) & self.allPieces:
+        if (squareBitBoard << 8) & self.allPieces:
           self.moves = self.wPawnCaptures[square] & self.blackPieces
         else:
           self.moves = self.wPawnMoves[square] & ~self.allPieces | (self.wPawnCaptures[square] & self.blackPieces)
 
-      else:
+        # enpassant check
+        # if in the fith rank and
+        # last move was from enemy pawn and
+        # was neighbor double advancing
+        if square // 8 == 4 and self.lastMove & self.bPawns and ((self.lastMove & self.wPawnCaptures[square] << 8) and (self.lastMove & self.wPawnCaptures[square] >> 8)):
+          self.moves |= (self.lastMove & -self.lastMove) << 8
+
+      # no piece was selected:
+      elif squareBitBoard & ~self.whitePieces:
         self.moves = 0
 
     else:
       # not special pieces
-      if 1 << square & self.bRooks:
+      if squareBitBoard & self.bRooks:
         self.moves = self.calculateCollisions(square, self.rookMoves, 0)
-      elif 1 << square & self.bKnights:
+      elif squareBitBoard & self.bKnights:
         self.moves = self.knightMoves[square] & ~self.blackPieces
-      elif 1 << square & self.bBishops:
+      elif squareBitBoard & self.bBishops:
         self.moves = self.calculateCollisions(square, self.bishopMoves, 0)
-      elif 1 << square & self.bQueens:
+      elif squareBitBoard & self.bQueens:
         self.moves = self.calculateCollisions(square, self.queenMoves, 0)
 
       # king update has to handle castling
-      elif 1 << square & self.bKing:
+      elif squareBitBoard & self.bKing:
         # normal moves
         self.moves = self.kingMoves[square] & ~self.blackPieces
 
@@ -380,17 +400,28 @@ class board:
             self.moves |= self.bKingBigCastleMove
 
       # pawn update has to handle enpassant and unique collision
-      elif 1 << square & self.bPawns:
+      elif squareBitBoard & self.bPawns:
 
         # collision check
-        if ((1 << square) >> 8) & self.allPieces:
+        if (squareBitBoard >> 8) & self.allPieces:
           self.moves = self.bPawnCaptures[square] & self.whitePieces
         else:
           self.moves = (self.bPawnMoves[square] & ~self.allPieces) | (self.bPawnCaptures[square] & self.whitePieces)
-      
-      else:
+
+        # enpassant check
+        # if in the fourth rank and
+        # last move was from enemy pawn and
+        # was neighbor double advancing
+        if square // 8 == 3 and self.lastMove & self.wPawns and ((self.lastMove & self.bPawnCaptures[square] << 8) and (self.lastMove & self.bPawnCaptures[square] >> 8)):
+          self.moves |= (self.lastMove & -self.lastMove) << 8
+
+      # no piece was selected:
+      elif squareBitBoard & ~self.blackPieces:
         self.moves = 0
 
+  # -------------------------------------------------
+  # -------------------- DRAWING --------------------
+  # -------------------------------------------------
 
   def draw(self, display):
     # drawing the background
@@ -449,6 +480,9 @@ class board:
       display.blit(transparentCircle, (x * self.squareSize, y * self.squareSize))
       temp &= temp - 1
 
+# ---------------------------------------------------
+# -------------------- GAME LOOP --------------------
+# ---------------------------------------------------
 
 gameBoard = board()
 
