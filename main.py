@@ -1,55 +1,26 @@
+import pygame as pg
 from ctypes import *
 
 engine = CDLL("./engine.so")
 
-class Board(Structure):
-    _fields_ = [
-        ("bRooks", c_uint64),
-        ("bKnights", c_uint64),
-        ("bBishops", c_uint64),
-        ("bQueens", c_uint64),
-        ("bKing", c_uint64),
-        ("bPawns", c_uint64),
-        ("wRooks", c_uint64),
-        ("wKnights", c_uint64),
-        ("wBishops", c_uint64),
-        ("wQueens", c_uint64),
-        ("wKing", c_uint64),
-        ("wPawns", c_uint64),
-    ]
-
-
-FENString = '4k2r/6r1/8/8/8/8/3R4/R3K3 w Qk - 0 1'
 engine.initializeBoard.argtypes = [c_char_p]
+engine.getMoves.argtypes = [c_int]
+engine.getMoves.restype = c_uint64
+engine.getBoard.restype = POINTER(c_uint64)
+
+FENString = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1'
 engine.initializeBoard(FENString.encode('utf-8'))
-
-engine.getBoard.restype = Board
-
-
-
-
-
-
-
-
-
-
-
-
-import pygame as pg
+board = engine.getBoard()
 
 pg.init()
-windowSize = 960
+windowSize = 960 / 2
 squareSize = windowSize / 8
 window = pg.display.set_mode((windowSize, windowSize))
 
-# # # #
-board = engine.getBoard()
-# # # #
-
 # sprite initialization
 spriteDictionary = {}
-for pieceName in [field for field in dir(board) if not field.startswith("_")]:
+pieceNames = ['bRooks', 'bKnights', 'bBishops', 'bQueens', 'bKing', 'bPawns', 'wRooks', 'wKnights', 'wBishops', 'wQueens', 'wKing', 'wPawns']
+for pieceName in pieceNames:
     img = pg.image.load('./assets/' + pieceName + '.png')
     img = pg.transform.smoothscale(img, (squareSize, squareSize))
     spriteDictionary[pieceName] = img
@@ -67,15 +38,25 @@ def drawBoard():
             pg.draw.rect(window, color, square)
 
     # drawing the pieces
-    for piece in [field for field in dir(board) if not field.startswith("_")]:
-        bitBoard = getattr(board, piece)
+    for piece in pieceNames:
+        bitBoard = board[pieceNames.index(piece)]
         for square in range(64):
             if(bitBoard >> square) & 1:
                 x = (square % 8) * squareSize
                 y = (square // 8) * squareSize
                 window.blit(spriteDictionary[piece], (x, y))
 
+def drawSelectedMoves(selectedMoves):
+    highlight = pg.Surface((squareSize, squareSize), pg.SRCALPHA)
+    highlight.fill((255, 255, 0, 100))
+    for i in range(64):
+        if (selectedMoves >> i) & 1:
+            x = (i % 8) * squareSize
+            y = (i // 8) * squareSize
+            window.blit(highlight, (x, y))
 
+selectedMoves = 0
+selectedPiece = 0
 drawBoard()
 pg.display.flip()
 running = True
@@ -85,9 +66,18 @@ while running:
             running = False
 
         if event.type == pg.MOUSEBUTTONDOWN:
-            drawBoard()
+            clickedSquare = int((event.pos[0] // squareSize) + (event.pos[1] // squareSize) * 8)
+            if(1 << clickedSquare) & selectedMoves:
+                engine.move(selectedPiece, clickedSquare)
+                board = engine.getBoard()
+                selectedPiece = 0
+                selectedMoves = 0
+                drawBoard()
+            else:
+                drawBoard()
+                selectedPiece = clickedSquare
+                selectedMoves = engine.getMoves(clickedSquare)
+                drawSelectedMoves(selectedMoves)
             pg.display.flip()
-
-
 
 pg.quit()
